@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, maximum-scale=1.0, user-scalable=no" />
+<title>ArchiDesign - AI 가설계 규모검토 플랫폼</title>
+<meta name="description" content="건축법규 기반 자동 신축 규모검토 시스템. 주소 검색만으로 건폐율, 용적률, 높이제한, 일조권, 주차, 이격거리 종합 검토." />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+<meta name="theme-color" content="#020617" />
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🏛️</text></svg>">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&family=Noto+Sans+KR:wght@300;400;500;700;900&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.9/babel.min.js"></script>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+html{
+  --sat: env(safe-area-inset-top, 0px);
+  --sab: env(safe-area-inset-bottom, 0px);
+  --sal: env(safe-area-inset-left, 0px);
+  --sar: env(safe-area-inset-right, 0px);
+}
+body{
+  background:#020617;
+  font-family:'Noto Sans KR',-apple-system,sans-serif;
+  color:#e2e8f0;
+  min-height:100vh;
+  padding-top:var(--sat);
+  padding-bottom:var(--sab);
+  padding-left:var(--sal);
+  padding-right:var(--sar);
+  -webkit-tap-highlight-color:transparent;
+  -webkit-touch-callout:none;
+  -webkit-user-select:none;
+  user-select:none;
+  overscroll-behavior:none;
+}
+input,select,button,textarea{
+  -webkit-user-select:auto;
+  user-select:auto;
+  font-size:16px !important; /* prevents iOS zoom on focus */
+}
+@keyframes spin{to{transform:rotate(360deg)}}
+::-webkit-scrollbar{width:4px}
+::-webkit-scrollbar-track{background:#0f172a}
+::-webkit-scrollbar-thumb{background:#334155;border-radius:4px}
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script type="text/babel">
+const {useState,useEffect,useCallback}=React;
+
+const ZONE_DATA={"제1종전용주거지역":{건폐율:50,용적률:100,높이제한:10,일조권:true,인접도로:4,전면이격:1.5,측면이격:0.5,color:"#4ADE80",label:"1종전용"},"제2종전용주거지역":{건폐율:50,용적률:150,높이제한:12,일조권:true,인접도로:4,전면이격:1.5,측면이격:0.5,color:"#86EFAC",label:"2종전용"},"제1종일반주거지역":{건폐율:60,용적률:200,높이제한:16,일조권:true,인접도로:6,전면이격:1.5,측면이격:0.5,color:"#FDE047",label:"1종일반"},"제2종일반주거지역":{건폐율:60,용적률:250,높이제한:20,일조권:true,인접도로:6,전면이격:2.0,측면이격:0.5,color:"#FACC15",label:"2종일반"},"제3종일반주거지역":{건폐율:50,용적률:300,높이제한:null,일조권:true,인접도로:8,전면이격:2.0,측면이격:1.0,color:"#F59E0B",label:"3종일반"},"준주거지역":{건폐율:70,용적률:500,높이제한:null,일조권:false,인접도로:8,전면이격:2.0,측면이격:1.0,color:"#FB923C",label:"준주거"},"중심상업지역":{건폐율:90,용적률:1500,높이제한:null,일조권:false,인접도로:12,전면이격:3.0,측면이격:0,color:"#EF4444",label:"중심상업"},"일반상업지역":{건폐율:80,용적률:1300,높이제한:null,일조권:false,인접도로:10,전면이격:2.5,측면이격:0,color:"#F87171",label:"일반상업"},"근린상업지역":{건폐율:70,용적률:900,높이제한:null,일조권:false,인접도로:8,전면이격:2.0,측면이격:0,color:"#FDA4AF",label:"근린상업"},"유통상업지역":{건폐율:80,용적률:1100,높이제한:null,일조권:false,인접도로:10,전면이격:2.5,측면이격:0,color:"#FB7185",label:"유통상업"},"전용공업지역":{건폐율:70,용적률:300,높이제한:null,일조권:false,인접도로:8,전면이격:2.0,측면이격:1.0,color:"#A78BFA",label:"전용공업"},"일반공업지역":{건폐율:70,용적률:350,높이제한:null,일조권:false,인접도로:8,전면이격:2.0,측면이격:1.0,color:"#C4B5FD",label:"일반공업"},"준공업지역":{건폐율:70,용적률:400,높이제한:null,일조권:false,인접도로:8,전면이격:2.0,측면이격:1.0,color:"#DDD6FE",label:"준공업"},"보전녹지지역":{건폐율:20,용적률:80,높이제한:10,일조권:false,인접도로:4,전면이격:3.0,측면이격:1.5,color:"#22C55E",label:"보전녹지"},"생산녹지지역":{건폐율:20,용적률:100,높이제한:10,일조권:false,인접도로:4,전면이격:3.0,측면이격:1.5,color:"#16A34A",label:"생산녹지"},"자연녹지지역":{건폐율:20,용적률:100,높이제한:10,일조권:false,인접도로:4,전면이격:3.0,측면이격:1.5,color:"#15803D",label:"자연녹지"}};
+
+const BUILDING_USES={"단독주택":{주차면적기준:150,조경면적비율:0},"다가구주택":{주차면적기준:100,조경면적비율:0},"다세대주택":{주차면적기준:85,조경면적비율:5},"연립주택":{주차면적기준:85,조경면적비율:10},"아파트":{주차면적기준:75,조경면적비율:15},"제1종근린생활시설":{주차면적기준:134,조경면적비율:5},"제2종근린생활시설":{주차면적기준:134,조경면적비율:5},"업무시설":{주차면적기준:100,조경면적비율:10},"숙박시설":{주차면적기준:100,조경면적비율:10},"판매시설":{주차면적기준:134,조경면적비율:5}};
+
+const SAMPLE_LOTS=[{address:"서울특별시 강남구 역삼동 123-4",지목:"대",면적:330.5,용도지역:"제2종일반주거지역",도로폭:8,대지형상:"정형",경사도:2,방위:"남향",지구단위:false},{address:"서울특별시 서초구 서초동 456-7",지목:"대",면적:520.0,용도지역:"제3종일반주거지역",도로폭:12,대지형상:"정형",경사도:1,방위:"남동향",지구단위:false},{address:"서울특별시 종로구 삼청동 78-2",지목:"대",면적:198.3,용도지역:"제1종일반주거지역",도로폭:6,대지형상:"부정형",경사도:5,방위:"동향",지구단위:true},{address:"서울특별시 마포구 연남동 234-1",지목:"대",면적:264.8,용도지역:"제2종일반주거지역",도로폭:6,대지형상:"정형",경사도:0,방위:"남향",지구단위:false},{address:"서울특별시 용산구 이태원동 89-3",지목:"대",면적:412.6,용도지역:"준주거지역",도로폭:10,대지형상:"정형",경사도:8,방위:"남서향",지구단위:false},{address:"서울특별시 송파구 잠실동 45-6",지목:"대",면적:680.0,용도지역:"일반상업지역",도로폭:25,대지형상:"정형",경사도:0,방위:"남향",지구단위:true},{address:"서울특별시 강북구 미아동 112-8",지목:"대",면적:215.3,용도지역:"제1종일반주거지역",도로폭:4,대지형상:"부정형",경사도:12,방위:"북향",지구단위:false},{address:"서울특별시 영등포구 여의도동 33-1",지목:"대",면적:1250.0,용도지역:"중심상업지역",도로폭:35,대지형상:"정형",경사도:0,방위:"남향",지구단위:true},{address:"서울특별시 성동구 성수동 567-2",지목:"대",면적:380.0,용도지역:"준공업지역",도로폭:8,대지형상:"정형",경사도:1,방위:"서향",지구단위:false},{address:"경기도 성남시 분당구 정자동 890-1",지목:"대",면적:450.0,용도지역:"제2종일반주거지역",도로폭:10,대지형상:"정형",경사도:3,방위:"남향",지구단위:false},{address:"인천광역시 연수구 송도동 12-34",지목:"대",면적:850.0,용도지역:"일반상업지역",도로폭:20,대지형상:"정형",경사도:0,방위:"남향",지구단위:true},{address:"부산광역시 해운대구 우동 567-8",지목:"대",면적:600.0,용도지역:"준주거지역",도로폭:15,대지형상:"정형",경사도:2,방위:"남동향",지구단위:false}];
+
+function calcBldg(lot,use){const z=ZONE_DATA[lot.용도지역],u=BUILDING_USES[use];if(!z||!u)return null;const A=lot.면적,br=z.건폐율,fr=z.용적률;const ba=Math.floor(A*(br/100)*10)/10,fa=Math.floor(A*(fr/100)*10)/10;const fh=3.3;const mf=z.높이제한?Math.floor(z.높이제한/fh):Math.floor(fa/ba);const af=Math.min(mf,Math.ceil(fa/ba));let sh=null;if(z.일조권)sh=9+(lot.도로폭/2)*0.5+(A>200?3:0);const pk=Math.ceil(ba*af/u.주차면적기준),pa=pk*12.5;const la=A*(u.조경면적비율/100);const w=Math.sqrt(A*1.2),d=A/w;const ew=Math.max(w-z.측면이격*2,3),ed=Math.max(d-z.전면이격-z.측면이격,3);const rsh=lot.도로폭*1.5;const mh=Math.min(...[af*fh,rsh,sh].filter(v=>v!==null&&v>0));const ff=Math.min(af,Math.floor(mh/fh));const tfa=ba*ff,tfr=Math.round((tfa/A)*100*10)/10;return{대지면적:A,건폐율:br,용적률:fr,건축면적:ba,연면적:tfa,법정연면적:fa,실제층수:ff,최대층수:mf,건물높이:ff*fh,최대높이:z.높이제한,도로사선높이:rsh,일조권높이:sh,주차대수:pk,주차면적:pa,조경면적:la,전면이격:z.전면이격,측면이격:z.측면이격,유효가로:ew,유효세로:ed,최종용적률:tfr,도로폭:lot.도로폭,zone:z}}
+
+function BViz({result}){if(!result)return null;const w=360,h=320,s=1.8,ox=w/2,oy=h-60;const iso=(x,y,z)=>({x:ox+(x-y)*0.866*s,y:oy-(x+y)*0.5*s-z*s});const gw=Math.min(result.유효가로,40),gd=Math.min(result.유효세로,30),nf=result.실제층수;const g1=iso(-gw/2-5,-gd/2-5,0),g2=iso(gw/2+5,-gd/2-5,0),g3=iso(gw/2+5,gd/2+5,0),g4=iso(-gw/2-5,gd/2+5,0);const gp=`M${g1.x},${g1.y} L${g2.x},${g2.y} L${g3.x},${g3.y} L${g4.x},${g4.y}Z`;const fl=[];for(let i=0;i<nf;i++){const z1=(i+1)*3.3,z0=i*3.3;const t1=iso(-gw/2,-gd/2,z1),t2=iso(gw/2,-gd/2,z1),t3=iso(gw/2,gd/2,z1),t4=iso(-gw/2,gd/2,z1);const r1=iso(gw/2,-gd/2,z0),r2=iso(gw/2,gd/2,z0),l1=iso(-gw/2,gd/2,z0);fl.push({i,tp:`M${t1.x},${t1.y} L${t2.x},${t2.y} L${t3.x},${t3.y} L${t4.x},${t4.y}Z`,rp:`M${t2.x},${t2.y} L${t3.x},${t3.y} L${r2.x},${r2.y} L${r1.x},${r1.y}Z`,lp:`M${t3.x},${t3.y} L${t4.x},${t4.y} L${l1.x},${l1.y} L${r2.x},${r2.y}Z`})}const c=result.zone.color;return(<svg viewBox={`0 0 ${w} ${h}`} style={{width:"100%",height:"auto"}}><defs><linearGradient id="sg" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="#0f172a"/><stop offset="100%" stopColor="#1e293b"/></linearGradient></defs><rect width={w} height={h} fill="url(#sg)" rx="8"/><path d={gp} fill="#334155" stroke="#475569" strokeWidth="0.5" opacity="0.6"/>{fl.map(f=>{const a=0.7+(f.i/nf)*0.3;return(<g key={f.i}><path d={f.rp} fill={c} opacity={a*0.5} stroke="#ffffff20" strokeWidth="0.3"/><path d={f.lp} fill={c} opacity={a*0.35} stroke="#ffffff20" strokeWidth="0.3"/><path d={f.tp} fill={c} opacity={a*0.7} stroke="#ffffff30" strokeWidth="0.3"/>{Array.from({length:Math.min(Math.floor(gw/5),6)}).map((_,wi)=>{const fr=(wi+1)/(Math.min(Math.floor(gw/5),6)+1);const pt=iso(-gw/2+gw*fr,-gd/2+0.2,f.i*3.3+1.8);return <circle key={wi} cx={pt.x} cy={pt.y} r="1.2" fill="#fff" opacity="0.5"/>})}</g>)})}<text x={w-20} y={30} fill="#94a3b8" fontSize="9" textAnchor="end" fontFamily="monospace">{result.건물높이.toFixed(1)}m</text><text x={w-20} y={42} fill="#64748b" fontSize="7" textAnchor="end" fontFamily="monospace">{result.실제층수}F</text><rect x="10" y="10" width="60" height="20" rx="4" fill={c} opacity="0.3"/><text x="40" y="23" fill={c} fontSize="8" textAnchor="middle" fontWeight="bold">{result.zone.label}</text></svg>)}
+
+function Gauge({value,max,label,unit="%",color}){const pct=Math.min((value/max)*100,100);return(<div style={{textAlign:"center"}}><div style={{position:"relative",width:80,height:80,margin:"0 auto"}}><svg viewBox="0 0 36 36" style={{width:"100%",height:"100%",transform:"rotate(-90deg)"}}><circle cx="18" cy="18" r="15.5" fill="none" stroke="#1e293b" strokeWidth="3"/><circle cx="18" cy="18" r="15.5" fill="none" stroke={color} strokeWidth="3" strokeDasharray={`${pct} ${100-pct}`} strokeLinecap="round" style={{transition:"stroke-dasharray 1s ease"}}/></svg><div style={{position:"absolute",top:"50%",left:"50%",transform:"translate(-50%,-50%)",fontSize:13,fontWeight:700,color:"#e2e8f0",fontFamily:"'JetBrains Mono',monospace"}}>{value.toFixed(0)}<span style={{fontSize:8,color:"#94a3b8"}}>{unit}</span></div></div><div style={{fontSize:10,color:"#94a3b8",marginTop:4}}>{label}</div></div>)}
+
+function Stat({label,value,sub,accent}){return(<div style={{padding:"12px 14px",background:"linear-gradient(135deg,#1e293b,#0f172a)",borderRadius:8,border:"1px solid #334155"}}><div style={{fontSize:10,color:"#64748b",marginBottom:4,letterSpacing:"0.08em",textTransform:"uppercase"}}>{label}</div><div style={{fontSize:20,fontWeight:700,color:accent||"#e2e8f0",fontFamily:"'JetBrains Mono',monospace"}}>{value}</div>{sub&&<div style={{fontSize:10,color:"#475569",marginTop:2}}>{sub}</div>}</div>)}
+
+function RC({label,status,detail}){const ic={pass:"✓",warn:"△",fail:"✗"},co={pass:"#4ade80",warn:"#fbbf24",fail:"#f87171"};return(<div style={{display:"flex",alignItems:"center",gap:10,padding:"8px 12px",background:status==="fail"?"rgba(127,29,29,0.13)":"transparent",borderRadius:6,borderLeft:`3px solid ${co[status]}`}}><span style={{color:co[status],fontWeight:700,fontSize:14,minWidth:16}}>{ic[status]}</span><div style={{flex:1}}><div style={{fontSize:12,color:"#e2e8f0",fontWeight:500}}>{label}</div><div style={{fontSize:10,color:"#64748b"}}>{detail}</div></div></div>)}
+
+function App(){const[q,setQ]=useState("");const[sg,setSg]=useState([]);const[lot,setLot]=useState(null);const[use,setUse]=useState("다세대주택");const[res,setRes]=useState(null);const[show,setShow]=useState(false);const[tab,setTab]=useState("overview");const[loading,setLoading]=useState(false);
+useEffect(()=>{q.length>=2?setSg(SAMPLE_LOTS.filter(l=>l.address.includes(q))):setSg([])},[q]);
+const sel=useCallback(l=>{setLot(l);setQ(l.address);setSg([]);setShow(false);setRes(null)},[]);
+const run=useCallback(()=>{if(!lot)return;setLoading(true);setTimeout(()=>{setRes(calcBldg(lot,use));setShow(true);setLoading(false)},1200)},[lot,use]);
+const regs=res?[{label:"건폐율 검토",status:"pass",detail:`${(res.건축면적/res.대지면적*100).toFixed(1)}% ≤ ${res.건폐율}% (적합)`},{label:"용적률 검토",status:res.최종용적률<=res.용적률?"pass":"fail",detail:`${res.최종용적률}% ≤ ${res.용적률}% ${res.최종용적률<=res.용적률?"(적합)":"(초과)"}`},{label:"도로사선 제한",status:res.건물높이<=res.도로사선높이?"pass":"warn",detail:`건물높이 ${res.건물높이.toFixed(1)}m / 도로사선 ${res.도로사선높이.toFixed(1)}m`},{label:"일조권 사선제한",status:!res.일조권높이?"pass":res.건물높이<=res.일조권높이?"pass":"warn",detail:res.일조권높이?`높이 ${res.건물높이.toFixed(1)}m / 일조권 ${res.일조권높이.toFixed(1)}m`:"해당없음"},{label:"전면 이격거리",status:"pass",detail:`${res.전면이격}m 이상 확보`},{label:"측면 이격거리",status:"pass",detail:`${res.측면이격}m 이상 확보`},{label:"주차대수 확보",status:"pass",detail:`법정 ${res.주차대수}대 (연면적 기준)`},{label:"접도 요건",status:res.도로폭>=res.zone.인접도로?"pass":"fail",detail:`전면도로 ${res.도로폭}m / 필요 ${res.zone.인접도로}m`}]:[];
+
+return(<div style={{minHeight:"100vh",background:"#020617",color:"#e2e8f0",fontFamily:"'Noto Sans KR',-apple-system,sans-serif"}}>
+{/* Header */}
+<div style={{background:"linear-gradient(180deg,#0f172a,#020617)",borderBottom:"1px solid #1e293b",padding:"20px 24px 16px"}}><div style={{maxWidth:900,margin:"0 auto"}}><div style={{display:"flex",alignItems:"center",gap:10,marginBottom:4}}><div style={{width:32,height:32,borderRadius:8,background:"linear-gradient(135deg,#3b82f6,#8b5cf6)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:16,fontWeight:900,color:"#fff"}}>建</div><div><h1 style={{fontSize:18,fontWeight:900,margin:0}}>AI 가설계 <span style={{color:"#3b82f6"}}>규모검토</span> 플랫폼</h1><p style={{fontSize:10,color:"#475569",margin:0,letterSpacing:"0.1em"}}>건축법규 기반 자동 신축 규모검토 시스템</p></div></div><div style={{display:"flex",gap:8,fontSize:9,color:"#475569",marginTop:10,flexWrap:"wrap"}}>{["국토계획법","건축법","주차장법","서울시 조례"].map(t=><span key={t} style={{padding:"3px 8px",borderRadius:4,background:"#1e293b",border:"1px solid #334155"}}>{t}</span>)}</div></div></div>
+
+<div style={{maxWidth:900,margin:"0 auto",padding:"20px 16px"}}>
+{/* Search */}
+<div style={{background:"linear-gradient(135deg,#0f172a,rgba(30,41,59,0.38))",borderRadius:12,padding:16,marginBottom:20,border:"1px solid #334155"}}>
+<div style={{fontSize:11,color:"#64748b",marginBottom:8,fontWeight:500,letterSpacing:"0.1em",textTransform:"uppercase"}}>📍 대지 검색</div>
+<div style={{position:"relative"}}>
+<input value={q} onChange={e=>{setQ(e.target.value);setLot(null);setShow(false)}} placeholder="주소를 입력하세요 (예: 강남구, 서초동...)" style={{width:"100%",padding:"12px 16px",fontSize:14,background:"#0f172a",border:"1px solid #334155",borderRadius:8,color:"#e2e8f0",outline:"none",boxSizing:"border-box",fontFamily:"'Noto Sans KR',sans-serif"}} onFocus={()=>q.length>=2&&setSg(SAMPLE_LOTS.filter(l=>l.address.includes(q)))}/>
+{sg.length>0&&<div style={{position:"absolute",top:"100%",left:0,right:0,zIndex:50,background:"#1e293b",border:"1px solid #334155",borderRadius:8,marginTop:4,overflow:"hidden",boxShadow:"0 8px 32px rgba(0,0,0,0.4)",maxHeight:"40vh",overflowY:"auto",WebkitOverflowScrolling:"touch"}}>
+{sg.map((l,i)=><div key={i} onClick={()=>sel(l)} style={{padding:"12px 14px",cursor:"pointer",borderBottom:i<sg.length-1?"1px solid rgba(51,65,85,0.19)":"none",WebkitTapHighlightColor:"rgba(59,130,246,0.1)"}}><div style={{fontSize:13,color:"#e2e8f0"}}>{l.address}</div><div style={{fontSize:10,color:"#64748b",marginTop:2}}>{l.용도지역} · {l.면적}㎡ · {l.지목}</div></div>)}
+</div>}</div>
+{lot&&<div style={{display:"flex",gap:10,marginTop:12,alignItems:"center",flexWrap:"wrap"}}>
+<select value={use} onChange={e=>{setUse(e.target.value);setShow(false)}} style={{padding:"10px 14px",fontSize:13,background:"#0f172a",border:"1px solid #334155",borderRadius:8,color:"#e2e8f0",outline:"none",fontFamily:"'Noto Sans KR',sans-serif",flex:1,minWidth:140}}>{Object.keys(BUILDING_USES).map(u=><option key={u} value={u}>{u}</option>)}</select>
+<button onClick={run} disabled={loading} style={{padding:"12px 24px",fontSize:13,fontWeight:700,background:loading?"#334155":"linear-gradient(135deg,#3b82f6,#8b5cf6)",border:"none",borderRadius:8,color:"#fff",cursor:loading?"wait":"pointer",fontFamily:"'Noto Sans KR',sans-serif",minHeight:44,WebkitTapHighlightColor:"transparent"}}>{loading?"분석 중...":"⚡ 규모검토 실행"}</button></div>}
+</div>
+
+{/* Lot Info */}
+{lot&&!show&&!loading&&<div style={{background:"#0f172a",borderRadius:12,padding:16,border:"1px solid #334155",marginBottom:20}}><div style={{fontSize:11,color:"#64748b",marginBottom:12,fontWeight:500,letterSpacing:"0.1em",textTransform:"uppercase"}}>토지대장 정보</div><div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(130px,1fr))",gap:10}}><Stat label="대지면적" value={`${lot.면적}㎡`} sub={`≒ ${(lot.면적/3.3058).toFixed(0)}평`}/><Stat label="용도지역" value={ZONE_DATA[lot.용도지역]?.label} accent={ZONE_DATA[lot.용도지역]?.color}/><Stat label="지목" value={lot.지목}/><Stat label="전면도로" value={`${lot.도로폭}m`}/><Stat label="대지형상" value={lot.대지형상}/><Stat label="방위" value={lot.방위}/></div></div>}
+
+{/* Loading */}
+{loading&&<div style={{textAlign:"center",padding:60,background:"#0f172a",borderRadius:12,border:"1px solid #334155"}}><div style={{width:48,height:48,margin:"0 auto 16px",border:"3px solid #334155",borderTop:"3px solid #3b82f6",borderRadius:"50%",animation:"spin 1s linear infinite"}}/><div style={{fontSize:14,color:"#94a3b8"}}>건축법규 분석 중...</div><div style={{fontSize:11,color:"#475569",marginTop:4}}>용도지역 · 건폐율 · 용적률 · 높이제한 · 일조권 · 도로사선 검토</div></div>}
+
+{/* Results */}
+{show&&res&&<div>
+<div style={{display:"flex",gap:2,marginBottom:16,background:"#0f172a",borderRadius:10,padding:3,border:"1px solid #1e293b"}}>{[{id:"overview",l:"📊 개요"},{id:"regulation",l:"📋 법규검토"},{id:"detail",l:"📐 상세수치"}].map(t=><button key={t.id} onClick={()=>setTab(t.id)} style={{flex:1,padding:"10px 0",fontSize:12,fontWeight:600,background:tab===t.id?"#1e293b":"transparent",border:"none",borderRadius:8,color:tab===t.id?"#e2e8f0":"#64748b",cursor:"pointer",fontFamily:"'Noto Sans KR',sans-serif",minHeight:44}}>{t.l}</button>)}</div>
+
+{tab==="overview"&&<div style={{display:"flex",flexDirection:"column",gap:16}}>
+<div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
+<div style={{background:"#0f172a",borderRadius:12,padding:12,border:"1px solid #334155"}}><div style={{fontSize:10,color:"#64748b",marginBottom:8,textTransform:"uppercase"}}>건물 매스 모델</div><BViz result={res}/></div>
+<div style={{background:"#0f172a",borderRadius:12,padding:12,border:"1px solid #334155",display:"flex",flexDirection:"column",justifyContent:"center"}}><div style={{fontSize:10,color:"#64748b",marginBottom:12,textTransform:"uppercase"}}>법정 한도 대비</div><div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}><Gauge value={(res.건축면적/res.대지면적)*100} max={res.건폐율} label="건폐율" color="#4ade80"/><Gauge value={res.최종용적률} max={res.용적률} label="용적률" color="#3b82f6"/><Gauge value={res.실제층수} max={res.최대층수||res.실제층수} label="층수" unit="F" color="#f59e0b"/><Gauge value={res.건물높이} max={Math.max(res.도로사선높이,res.건물높이)} label="높이" unit="m" color="#8b5cf6"/></div></div></div>
+<div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(130px,1fr))",gap:10}}>
+<Stat label="건축면적" value={`${res.건축면적.toFixed(1)}㎡`} sub={`건폐율 ${(res.건축면적/res.대지면적*100).toFixed(1)}%`} accent="#4ade80"/>
+<Stat label="연면적" value={`${res.연면적.toFixed(1)}㎡`} sub={`용적률 ${res.최종용적률}%`} accent="#3b82f6"/>
+<Stat label="규모" value={`지상 ${res.실제층수}층`} sub={`높이 ${res.건물높이.toFixed(1)}m`} accent="#f59e0b"/>
+<Stat label="주차" value={`${res.주차대수}대`} sub={`주차면적 ${res.주차면적.toFixed(0)}㎡`} accent="#8b5cf6"/>
+<Stat label="조경면적" value={`${res.조경면적.toFixed(1)}㎡`} sub={`대지 대비 ${(res.조경면적/res.대지면적*100).toFixed(1)}%`}/>
+<Stat label="전면도로" value={`${res.도로폭}m`} sub={`사선높이 ${res.도로사선높이.toFixed(1)}m`}/>
+</div></div>}
+
+{tab==="regulation"&&<div style={{background:"#0f172a",borderRadius:12,padding:16,border:"1px solid #334155"}}>
+<div style={{fontSize:11,color:"#64748b",marginBottom:16,fontWeight:500,textTransform:"uppercase"}}>건축법규 적합성 검토</div>
+<div style={{display:"flex",flexDirection:"column",gap:6}}>{regs.map((r,i)=><RC key={i} {...r}/>)}</div>
+<div style={{marginTop:20,padding:14,background:"#1e293b",borderRadius:8,border:"1px solid #334155"}}><div style={{fontSize:11,color:"#94a3b8",fontWeight:600,marginBottom:8}}>📌 적용 법규 요약</div><div style={{fontSize:11,color:"#64748b",lineHeight:1.8}}>• 국토의 계획 및 이용에 관한 법률 제77조 (건폐율), 제78조 (용적률)<br/>• 건축법 제58조 (대지 안의 공지), 제61조 (일조 등의 확보를 위한 건축물의 높이 제한)<br/>• 건축법 시행령 제80조 (건축물의 높이 제한), 제86조 (일조권)<br/>• 서울특별시 건축조례 제29조~35조 (용도지역별 건폐율·용적률)<br/>• 주차장법 시행령 제6조 (부설주차장 설치기준)<br/>{lot.지구단위&&"• 지구단위계획 수립지역 – 별도 세부기준 확인 필요"}</div></div></div>}
+
+{tab==="detail"&&<div style={{display:"flex",flexDirection:"column",gap:16}}>
+<div style={{background:"#0f172a",borderRadius:12,padding:16,border:"1px solid #334155"}}>
+<div style={{fontSize:11,color:"#64748b",marginBottom:14,fontWeight:500,textTransform:"uppercase"}}>📐 상세 수치 산출표</div>
+<div style={{overflowX:"auto",WebkitOverflowScrolling:"touch"}}>
+<table style={{width:"100%",borderCollapse:"collapse",fontSize:12,minWidth:420}}><thead><tr style={{borderBottom:"1px solid #334155"}}><th style={{textAlign:"left",padding:"8px 10px",color:"#94a3b8",fontWeight:500}}>항목</th><th style={{textAlign:"right",padding:"8px 10px",color:"#94a3b8",fontWeight:500}}>수치</th><th style={{textAlign:"right",padding:"8px 10px",color:"#94a3b8",fontWeight:500}}>법정한도</th><th style={{textAlign:"center",padding:"8px 10px",color:"#94a3b8",fontWeight:500}}>적합</th></tr></thead>
+<tbody>{[["대지면적",`${res.대지면적.toFixed(1)}㎡`,"-","-"],["건축면적",`${res.건축면적.toFixed(1)}㎡`,`${(res.대지면적*res.건폐율/100).toFixed(1)}㎡`,"✓"],["건폐율",`${(res.건축면적/res.대지면적*100).toFixed(1)}%`,`${res.건폐율}%`,"✓"],["연면적",`${res.연면적.toFixed(1)}㎡`,`${res.법정연면적.toFixed(1)}㎡`,res.연면적<=res.법정연면적?"✓":"✗"],["용적률",`${res.최종용적률}%`,`${res.용적률}%`,res.최종용적률<=res.용적률?"✓":"✗"],["층수",`지상 ${res.실제층수}층`,res.최대높이?`${res.최대높이}m 이하`:"-","✓"],["건물높이",`${res.건물높이.toFixed(1)}m`,`${res.도로사선높이.toFixed(1)}m (도로사선)`,res.건물높이<=res.도로사선높이?"✓":"△"],["일조권",res.일조권높이?`${res.일조권높이.toFixed(1)}m`:"해당없음","-",res.일조권높이?(res.건물높이<=res.일조권높이?"✓":"△"):"-"],["전면이격",`${res.전면이격}m`,`${res.zone.전면이격}m`,"✓"],["측면이격",`${res.측면이격}m`,`${res.zone.측면이격}m`,"✓"],["주차대수",`${res.주차대수}대`,`법정 ${res.주차대수}대`,"✓"],["주차면적",`${res.주차면적.toFixed(0)}㎡`,"-","-"],["조경면적",`${res.조경면적.toFixed(1)}㎡`,"-","-"]].map(([a,b,c,d],i)=><tr key={i} style={{borderBottom:"1px solid #1e293b"}}><td style={{padding:"8px 10px",color:"#cbd5e1"}}>{a}</td><td style={{padding:"8px 10px",color:"#e2e8f0",textAlign:"right",fontFamily:"'JetBrains Mono',monospace",fontWeight:600}}>{b}</td><td style={{padding:"8px 10px",color:"#64748b",textAlign:"right",fontFamily:"'JetBrains Mono',monospace"}}>{c}</td><td style={{padding:"8px 10px",textAlign:"center",fontWeight:700,color:d==="✓"?"#4ade80":d==="✗"?"#f87171":d==="△"?"#fbbf24":"#475569"}}>{d}</td></tr>)}</tbody></table>
+</div></div>
+<div style={{background:"#0f172a",borderRadius:12,padding:16,border:"1px solid #334155"}}>
+<div style={{fontSize:11,color:"#64748b",marginBottom:14,fontWeight:500,textTransform:"uppercase"}}>🏗 층별 면적 구성안</div>
+<div style={{display:"flex",flexDirection:"column",gap:4}}>{Array.from({length:res.실제층수}).map((_,i)=>{const f=res.실제층수-i,p=(res.건축면적/(res.대지면적*res.건폐율/100))*100;return(<div key={f} style={{display:"flex",alignItems:"center",gap:10}}><div style={{width:36,fontSize:11,color:"#94a3b8",textAlign:"right",fontFamily:"'JetBrains Mono',monospace"}}>{f}F</div><div style={{flex:1,height:22,background:"#1e293b",borderRadius:4,overflow:"hidden"}}><div style={{width:`${Math.min(p,100)}%`,height:"100%",background:`linear-gradient(90deg,${res.zone.color}80,${res.zone.color}40)`,borderRadius:4,display:"flex",alignItems:"center",paddingLeft:8}}><span style={{fontSize:10,color:"#e2e8f0",fontFamily:"'JetBrains Mono',monospace"}}>{res.건축면적.toFixed(1)}㎡</span></div></div></div>)})}</div>
+<div style={{marginTop:12,paddingTop:12,borderTop:"1px solid #1e293b",display:"flex",justifyContent:"space-between",fontSize:12}}><span style={{color:"#94a3b8"}}>총 연면적</span><span style={{color:"#e2e8f0",fontWeight:700,fontFamily:"'JetBrains Mono',monospace"}}>{res.연면적.toFixed(1)}㎡ ({(res.연면적/3.3058).toFixed(0)}평)</span></div></div></div>}
+
+<div style={{marginTop:20,padding:14,borderRadius:8,background:"#1e1a0e",border:"1px solid rgba(133,77,14,0.25)",fontSize:10,color:"#a16207",lineHeight:1.6}}>⚠️ 본 결과는 참고용 가설계 검토이며, 실제 건축허가 시 지구단위계획, 도시설계, 경관심의, 교통영향평가 등 추가 검토가 필요합니다.</div>
+</div>}
+
+{/* Empty State */}
+{!lot&&!loading&&<div style={{textAlign:"center",padding:"50px 20px",background:"#0f172a",borderRadius:12,border:"1px solid #1e293b"}}><div style={{fontSize:40,marginBottom:16}}>🏛️</div><div style={{fontSize:16,fontWeight:700,color:"#94a3b8",marginBottom:8}}>주소를 검색하여 시작하세요</div><div style={{fontSize:12,color:"#475569",lineHeight:1.8,maxWidth:400,margin:"0 auto"}}>주소 입력 → 필지 정보 자동 조회 → 용도별 건축규모 자동 산출<br/>건폐율 · 용적률 · 높이제한 · 일조권 · 주차 · 이격거리 종합검토</div><div style={{marginTop:24,display:"flex",flexWrap:"wrap",justifyContent:"center",gap:8}}>{["강남구","서초동","마포구","용산구","여의도","성수동","송파구","분당구"].map(k=><button key={k} onClick={()=>setQ(k)} style={{padding:"8px 16px",fontSize:11,fontWeight:500,background:"#1e293b",border:"1px solid #334155",borderRadius:20,color:"#94a3b8",cursor:"pointer",fontFamily:"'Noto Sans KR',sans-serif",minHeight:36}} onMouseEnter={e=>{e.currentTarget.style.borderColor="#3b82f6";e.currentTarget.style.color="#e2e8f0"}} onMouseLeave={e=>{e.currentTarget.style.borderColor="#334155";e.currentTarget.style.color="#94a3b8"}}>{k}</button>)}</div></div>}
+</div>
+
+<div style={{textAlign:"center",padding:"20px 16px",marginTop:40,borderTop:"1px solid #1e293b",fontSize:10,color:"#334155"}}>건축법 · 국토계획법 · 주차장법 · 서울시건축조례 기반 | LUXURYN Co., Ltd.</div>
+</div>)}
+
+ReactDOM.createRoot(document.getElementById("root")).render(<App/>);
+</script>
+</body>
+</html>

@@ -1,0 +1,26 @@
+{
+  "name": "archidesign-app",
+  "version": "1.0.0",
+  "description": "AI 가설계 규모검토 플랫폼 - 건축법규 기반 자동 신축 규모검토 시스템",
+  "main": "index.js",
+  "scripts": {
+    "build": "mkdir -p dist && cp -r www/* dist/ 2>/dev/null || cp -r www/* dist/",
+    "cap:init": "npx cap init ArchiDesign com.luxuryn.archidesign --web-dir www",
+    "cap:add:ios": "npx cap add ios",
+    "cap:add:android": "npx cap add android",
+    "cap:sync": "npx cap sync",
+    "cap:open:ios": "npx cap open ios",
+    "cap:open:android": "npx cap open android"
+  },
+  "keywords": ["architecture", "building", "feasibility", "korea"],
+  "author": "LUXURYN Co., Ltd.",
+  "license": "UNLICENSED",
+  "dependencies": {
+    "@capacitor/android": "^8.5.2",
+    "@capacitor/cli": "^8.5.2",
+    "@capacitor/core": "^8.5.2",
+    "@capacitor/ios": "^8.5.2",
+    "@capacitor/splash-screen": "^8.0.2",
+    "@capacitor/status-bar": "^8.0.3"
+  }
+}

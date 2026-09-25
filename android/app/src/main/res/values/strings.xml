@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">ArchiDesign</string>
+    <string name="title_activity_main">ArchiDesign</string>
+    <string name="package_name">com.luxuryn.archidesign</string>
+    <string name="custom_url_scheme">com.luxuryn.archidesign</string>
+</resources>
